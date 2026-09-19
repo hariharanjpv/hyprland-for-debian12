@@ -179,6 +179,50 @@ refer only to builtins or to aliases defined above them.
 
 ---
 
+## Screen sharing offers nothing (Discord, browsers, conferencing)
+
+"Share screen" shows an empty list, or the dialog never appears. Screen capture
+on Wayland goes through **xdg-desktop-portal** plus a compositor-specific
+backend — without `xdg-desktop-portal-hyprland` there is nothing to capture
+with. `build/09-xdph.sh` builds it; `./install-portal.sh` registers it.
+
+Building it is the easy part. **Three things must line up:**
+
+**1. systemd cannot see the unit.** It installs to
+`/opt/hypr/lib/systemd/user`, which systemd does not scan. Symlink it into
+`~/.config/systemd/user`.
+
+**2. xdg-desktop-portal cannot find `hyprland.portal`.** Bookworm has xdp
+**1.16**, which only scans `/usr/share/xdg-desktop-portal/portals` and has no
+drop-in directory. A systemd service drop-in points `XDG_DESKTOP_PORTAL_DIR`
+at a user directory instead.
+
+> **`XDG_DESKTOP_PORTAL_DIR` replaces the search path — it does not add to
+> it.** Point it at a directory containing only `hyprland.portal` and you lose
+> the GTK portal, which means file-picker dialogs stop working everywhere.
+> `install-portal.sh` symlinks the system `.portal` files in alongside.
+
+**3. The Qt6 picker cannot be built here.** Upstream's
+`hyprland-share-picker` is Qt6, and bookworm's Qt6 is **libstdc++** while this
+prefix is **libc++** — the exact ABI mix that corrupts at runtime
+([why-libcxx.md](why-libcxx.md)). So `-DBUILD_SHARE_PICKER=OFF`, and
+`config/hypr/scripts/share-picker.sh` replaces it using fuzzel + slurp. It
+speaks xdph's stdout protocol directly:
+
+```
+[SELECTION]{flags}/screen:<output>
+[SELECTION]{flags}/window:<id>
+[SELECTION]{flags}/region:<output>@<x>,<y>,<w>,<h>
+```
+
+It needs `jq`, and `fuzzel --index` — another reason the 1.12 build matters,
+since Debian's 1.8.2 has no `--index`.
+
+The service declares `ConditionEnvironment=WAYLAND_DISPLAY`, so it will not
+start from a TTY or over SSH. That is correct, not a fault.
+
+---
+
 ## Two patches live in the working tree
 
 `patches/` holds both, and `build/05-hyprland.sh` applies them — but they are

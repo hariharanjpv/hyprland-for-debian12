@@ -1,0 +1,10 @@
+# xdg-desktop-portal-hyprland config (read at service start only — after editing:
+#   systemctl --user restart xdg-desktop-portal-hyprland.service)
+screencopy {
+    # fuzzel/slurp picker; the upstream Qt6 picker is not built on this machine.
+    custom_picker_binary = @HOME@/.config/hypr/scripts/share-picker.sh
+    max_fps = 60
+    # 1 = the app receives a restore token and can re-share the same source later
+    # without prompting (Discord uses this). 0 = prompt every time.
+    allow_token_by_default = 0
+}

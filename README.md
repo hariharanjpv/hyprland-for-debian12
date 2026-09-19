@@ -48,11 +48,12 @@ repo follows from it. See **[docs/why-libcxx.md](docs/why-libcxx.md)**.
 | hyprlock | 0.9.6 | `/opt/hypr` |
 | Waybar | 0.15.0 | `/opt/waybar` |
 | fuzzel | 1.12.0 | `/opt/hypr` |
+| xdg-desktop-portal-hyprland | 1.4.1 | `/opt/hypr` |
 | aquamarine, hyprutils, hyprlang, hyprcursor, hyprgraphics, hyprwire | see `versions.env` | `/opt/hypr` |
 | wayland 1.26, wayland-protocols 1.49, libdrm 2.4.134, libxkbcommon 1.13.2, libinput 1.30.4, libseat 0.9.3, libei 1.6.0, cairo 1.18.4, libdisplay-info, xcb-util-errors | | `/opt/hypr` |
 | glslang, re2, muparser, tomlplusplus, sdbus-c++, date, Lua 5.5 | | `/opt/hypr` |
 
-**~26 source builds.** Budget 1–2 hours on a modern machine, plus ~6 GB.
+**~27 source builds.** Budget 1–2 hours on a modern machine, plus ~6 GB.
 
 Everything installs into **private prefixes**. Nothing overwrites a system
 library, so your current desktop keeps working and remains your fallback the

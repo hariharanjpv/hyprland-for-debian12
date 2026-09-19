@@ -20,6 +20,8 @@ PKGS=(
 	libxcb-res0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-xkb-dev
 	libpam0g-dev libxml2-dev libpng-dev uuid-dev
 	xwayland
+	# screen sharing: pipewire is the transport, jq is used by share-picker.sh
+	pipewire pipewire-pulse wireplumber libpipewire-0.3-dev jq
 	# desktop services: notify-send, the notification daemon the scripts
 	# and waybar's bell module talk to, and night light
 	libnotify-bin sway-notification-center wlsunset

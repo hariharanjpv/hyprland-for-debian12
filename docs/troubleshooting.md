@@ -152,10 +152,29 @@ can kill it from another VT if it misbehaves.
 
 ## Screen sharing does not work
 
-`xdg-desktop-portal-hyprland` is not built by these scripts. Without it,
-screencasting from browsers and conferencing apps will not work. It needs
-`sdbus-c++` (already in `/opt/hypr`) plus `pipewire`, and is a reasonable
-addition if you need it.
+Built by `build/09-xdph.sh`, registered by `./install-portal.sh`. If sharing
+still offers nothing, check in this order:
+
+```bash
+systemctl --user status xdg-desktop-portal-hyprland.service   # active?
+pgrep -af xdg-desktop-portal                                   # both running?
+ls -l ~/.local/share/xdg-desktop-portal/portals/               # hyprland.portal linked?
+systemctl --user show-environment | grep PORTAL_DIR
+```
+
+- **Unit not found** — the symlink into `~/.config/systemd/user` is missing.
+- **Inactive (condition failed)** — expected outside a Wayland session; it
+  requires `WAYLAND_DISPLAY`.
+- **Running but no sources listed** — the picker failed. Run it by hand:
+  `~/.config/hypr/scripts/share-picker.sh` (needs `jq` and a fuzzel with
+  `--index`).
+- **File dialogs broke at the same time** — `XDG_DESKTOP_PORTAL_DIR` replaced
+  the search path and the GTK portal is no longer visible. Re-run
+  `install-portal.sh`, which symlinks the system portals in too.
+
+After editing `~/.config/hypr/xdph.conf`:
+`systemctl --user restart xdg-desktop-portal-hyprland.service` — it is read
+only at service start.
 
 ---
 

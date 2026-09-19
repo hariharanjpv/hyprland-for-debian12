@@ -1,0 +1,5 @@
+# Added 2026-09-19 (see ~/hyprland-build/CHANGES.md). xdg-desktop-portal 1.16 only
+# scans /usr/share/xdg-desktop-portal/portals; this points it at a user dir that
+# also contains hyprland.portal from /opt/hypr. Remove this file to undo.
+[Service]
+Environment=XDG_DESKTOP_PORTAL_DIR=@HOME@/.local/share/xdg-desktop-portal/portals
