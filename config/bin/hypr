@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# hypr — start Hyprland from a bare TTY.
+#
+# Usage: switch to a free VT (Ctrl+Alt+F3), log in, type:  hypr
+#
+# No need to source /opt/hypr/env.sh: every library is found via the rpath
+# baked into the binaries at build time. This only adds what the *session*
+# needs — hyprctl on PATH, and Hyprland's own data dir for portals/assets.
+
+set -eu
+
+PREFIX=/opt/hypr
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] || [ -n "${DISPLAY:-}" ]; then
+	echo "hypr: a graphical session is already running on this VT." >&2
+	echo "      Hyprland needs its own logind session — switch to a free VT" >&2
+	echo "      (Ctrl+Alt+F3), log in there, and run 'hypr' again." >&2
+	exit 1
+fi
+
+export PATH="$PREFIX/bin:$PATH"
+export XDG_DATA_DIRS="$PREFIX/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# keep a log outside /run so it survives the session ending
+exec "$PREFIX/bin/start-hyprland" "$@" 2>&1 | tee ~/hypr-last-session.log

@@ -1,0 +1,5 @@
+src/
+*.log
+*.tar.gz
+*.tar.xz
+build/*.local

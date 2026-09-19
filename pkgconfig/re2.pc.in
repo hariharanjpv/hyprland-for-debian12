@@ -1,0 +1,13 @@
+# Upstream re2 ships no .pc file; Debian authors theirs downstream.
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: re2
+Description: RE2 regular expression library (pre-Abseil, built with libc++)
+URL: https://github.com/google/re2
+Version: @VERSION@
+Libs: -L${libdir} -lre2
+Libs.private: -lpthread
+Cflags: -I${includedir}

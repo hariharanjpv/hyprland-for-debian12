@@ -1,0 +1,11 @@
+# Header-only on purpose: compiles into the consumer with the consumer's
+# stdlib, so there is no libstdc++/libc++ ABI boundary.
+# NOTE: deliberately NO `Libs:` line — nothing should link -ltomlplusplus.
+prefix=@PREFIX@
+includedir=${prefix}/include
+
+Name: tomlplusplus
+Description: TOML parser for C++ (header-only)
+URL: https://marzer.github.io/tomlplusplus
+Version: @VERSION@
+Cflags: -I${includedir} -DTOML_HEADER_ONLY=1
