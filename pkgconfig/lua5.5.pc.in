@@ -1,0 +1,14 @@
+# Upstream Lua ships no .pc; its `pc:` make target only PRINTS variables.
+# Filename must match one of Hyprland's candidates:
+#   lua55 / lua5.5 / lua-55 / lua-5.5 / lua>=5.5
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Lua
+Description: Lua language engine
+URL: https://www.lua.org
+Version: @VERSION@
+Libs: -L${libdir} -llua -lm -ldl
+Cflags: -I${includedir}

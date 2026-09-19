@@ -1,0 +1,260 @@
+#!/usr/bin/env bash
+# hypr-menu — nested Omarchy-style menus driven by `fuzzel --dmenu`.
+#
+# The nesting lives HERE, not in the launcher. Every menu is the same shape:
+#   print lines  ->  fuzzel picks one  ->  case dispatches  ->  act or descend.
+#
+# HOW TO EXTEND
+#   Add an item    : add a line to the pick list + a matching `*Label)` branch.
+#   Add a submenu  : write `menu_<name>()`, point a branch at it, end with BACK.
+#   Jump straight  : `hypr-menu power` opens that submenu directly.
+
+set -uo pipefail
+
+export PATH="/opt/hypr/bin:$PATH" # hyprctl lives in the prefix
+
+FONT="JetBrainsMono Nerd Font:size=12"
+BACK="󰌍  Back"
+
+pick() { # pick "<prompt>" "<item>"...
+	local prompt="$1"
+	shift
+	printf '%s\n' "$@" |
+		fuzzel --dmenu --log-level=error --font "$FONT" --width 34 --lines 12 --prompt "$prompt  "
+}
+
+SCRIPTS="$HOME/.config/hypr/scripts"
+TERMINAL="${TERMINAL:-foot}"
+
+run() { setsid -f "$@" >/dev/null 2>&1; }
+
+# ─────────────────────────────────────────────────────────── main
+
+menu_main() {
+	case "$(pick "Menu" \
+		"󰀻  Apps" \
+		"󰖯  Windows" \
+		"󰄀  Capture" \
+		"󰸌  Style" \
+		"󰤨  Connect" \
+		"󰒓  Settings" \
+		"󰍹  System" \
+		"󰐥  Power")" in
+	*Apps) run fuzzel ;;
+	*Windows) menu_windows ;;
+	*Capture) menu_capture ;;
+	*Style) menu_style ;;
+	*Connect) menu_connect ;;
+	*Settings) menu_settings ;;
+	*System) menu_system ;;
+	*Power) menu_power ;;
+	esac
+}
+
+# ─────────────────────────────────────────────────────────── submenus
+
+# Live window switcher. Keeps address+label paired so focus is exact,
+# not a fuzzy title match.
+menu_windows() {
+	local list sel addr
+	list=$(hyprctl -j clients | python3 -c '
+import json, sys
+for c in json.load(sys.stdin):
+    if not c["mapped"]:
+        continue
+    ws  = str(c["workspace"]["name"])
+    cls = c["class"] or "?"
+    ttl = (c["title"] or "")[:60]
+    print(c["address"] + "\t" + ws.ljust(4) + cls.ljust(18) + ttl)
+') || return
+	[ -z "$list" ] && return
+	sel=$(printf '%s\n' "$list" | cut -f2- |
+		fuzzel --dmenu --log-level=error --font "$FONT" --width 70 --lines 15 --prompt "Window  ")
+	[ -z "$sel" ] && return
+	addr=$(printf '%s\n' "$list" | awk -F'\t' -v s="$sel" '$2==s{print $1; exit}')
+	[ -n "$addr" ] && hyprctl dispatch focuswindow "address:$addr"
+}
+
+menu_capture() {
+	case "$(pick "Capture" \
+		"󰩭  Region to clipboard" \
+		"󰖯  Active window" \
+		"󰍹  Whole screen" \
+		"󰉏  Region to file" \
+		"$BACK")" in
+	*"Region to clipboard") grim -g "$(slurp)" - | wl-copy ;;
+	*"Active window") grim -w "$(hyprctl -j activewindow | grep -oP '"address":\s*"\K[^"]+')" - | wl-copy ;;
+	*"Whole screen") grim - | wl-copy ;;
+	*"Region to file")
+		mkdir -p ~/Pictures
+		grim -g "$(slurp)" ~/Pictures/shot-$(date +%F-%H%M%S).png
+		;;
+	*Back) menu_main ;;
+	esac
+}
+
+menu_style() {
+	case "$(pick "Style" \
+		"󰸉  Wallpaper" \
+		"󰃟  Dark / light toggle" \
+		"󰝤  Toggle blur" \
+		"󰹹  Toggle gaps" \
+		"󰕮  Waybar theme" \
+		"$BACK")" in
+	*Wallpaper) run "$SCRIPTS"/wallpaper.sh ;;
+	*"Dark / light") run "$SCRIPTS"/darklight.sh ;;
+	*"Toggle blur") toggle_opt decoration:blur:enabled int 1 0 ;;
+	*"Toggle gaps") toggle_opt general:gaps_out custom 10 0 ;;
+	*"Waybar theme") run "$SCRIPTS"/waybar-themes.sh ;;
+	*Back) menu_main ;;
+	esac
+}
+
+# toggle_opt <hyprland option> <json field> <on value> <off value>
+toggle_opt() {
+	local cur
+	cur=$(hyprctl getoption "$1" -j | python3 -c "import json,sys; print(json.load(sys.stdin)['$2'])" 2>/dev/null)
+	case "$cur" in
+	"$3" | "$3 $3 $3 $3") hyprctl keyword "$1" "$4" ;;
+	*) hyprctl keyword "$1" "$3" ;;
+	esac
+}
+
+menu_connect() {
+	case "$(pick "Connect" \
+		"󰤨  Wi-Fi" \
+		"󰂯  Bluetooth" \
+		"󰖟  Network settings" \
+		"$BACK")" in
+	*Wi-Fi) menu_network ;;
+	*Bluetooth) menu_bluetooth ;;
+	*"Network settings") run nm-connection-editor ;;
+	*Back) menu_main ;;
+	esac
+}
+
+menu_settings() {
+	case "$(pick "Settings" \
+		"󰕾  Volume" \
+		"󰋋  Audio mixer" \
+		"󰃠  Brightness" \
+		"󰌌  Keyboard layout" \
+		"󰾆  Power profile" \
+		"$BACK")" in
+	*Volume) menu_volume ;;
+	*"Audio mixer") menu_audio ;;
+	*Brightness) menu_brightness ;;
+	*"Keyboard layout") "$SCRIPTS/kb-layout.sh" --switch ;;
+	*"Power profile") run "$SCRIPTS"/power-profile.sh ;;
+	*Back) menu_main ;;
+	esac
+}
+
+
+
+menu_volume() {
+	case "$(pick "Volume" \
+		"󰝝  Up 5%" \
+		"󰝞  Down 5%" \
+		"󰝟  Mute toggle" \
+		"󰍬  Mic mute toggle" \
+		"$BACK")" in
+	*"Up 5%") "$SCRIPTS/volume.sh" --inc; menu_volume ;;
+	*"Down 5%") "$SCRIPTS/volume.sh" --dec; menu_volume ;;
+	*"Mute toggle") "$SCRIPTS/volume.sh" --toggle ;;
+	*"Mic mute toggle") "$SCRIPTS/volume.sh" --toggle-mic ;;
+	*Back) menu_settings ;;
+	esac
+}
+
+menu_brightness() {
+	case "$(pick "Brightness" \
+		"󰃠  Up" \
+		"󰃞  Down" \
+		"$BACK")" in
+	*Up) "$SCRIPTS/brightness.sh" --inc; menu_brightness ;;
+	*Down) "$SCRIPTS/brightness.sh" --dec; menu_brightness ;;
+	*Back) menu_settings ;;
+	esac
+}
+
+menu_system() {
+	case "$(pick "System" \
+		"󰌌  Keybindings" \
+		"󰑓  Reload Hyprland" \
+		"󰍹  Monitors" \
+		"󰖳  Toggle Waybar" \
+		"󰋼  Hyprland version" \
+		"$BACK")" in
+	*Keybindings) menu_keybinds ;;
+	*"Reload Hyprland") hyprctl reload ;;
+	*Monitors) run foot -e sh -c 'hyprctl monitors; read -r _' ;;
+	*"Toggle Waybar") pkill -x waybar || setsid -f waybar ;;
+	*"Hyprland version") run foot -e sh -c 'hyprctl version; read -r _' ;;
+	*Back) menu_main ;;
+	esac
+}
+
+# Reads binds out of the RUNNING config, so it can never drift from reality.
+menu_keybinds() {
+	hyprctl -j binds | python3 -c '
+import json, sys
+M = {64: "SUPER", 8: "ALT", 4: "CTRL", 1: "SHIFT"}
+rows = []
+for b in json.load(sys.stdin):
+    mods = "+".join(v for k, v in M.items() if b["modmask"] & k)
+    key  = b["key"] or str(b["keycode"])
+    combo = (mods + "+" + key) if mods else key
+    rows.append(combo.ljust(26) + b["dispatcher"] + " " + b["arg"])
+print("\n".join(sorted(rows)))
+' 2>/dev/null |
+		fuzzel --dmenu --log-level=error --font "$FONT" --width 78 --lines 20 --prompt "Keybind  " >/dev/null
+}
+
+menu_power() {
+	case "$(pick "Power" \
+		"󰌾  Lock" \
+		"󰗽  Log out" \
+		"󰒲  Suspend" \
+		"󰜉  Reboot" \
+		"󰐥  Shut down" \
+		"$BACK")" in
+	*Lock) run /opt/hypr/bin/hyprlock --config "$HOME/.config/hypr/hyprlock.conf" ;;
+	*"Log out") hyprctl dispatch exit ;;
+	*Suspend) systemctl suspend ;;
+	*Reboot) systemctl reboot ;;
+	*"Shut down") systemctl poweroff ;;
+	*Back) menu_main ;;
+	esac
+}
+
+# ─────────────────────────────────────────────────────────── direct jumps
+#
+# Thin entry points so a single waybar icon can open exactly one thing:
+#   "on-click": "hypr-menu bluetooth"   instead of the old wofi script.
+# They deliberately hold no menu of their own — the script they call IS the
+# menu — so there is one definition of each list, not two.
+
+menu_apps()         { run fuzzel ; }
+# Wi-Fi and Bluetooth list inline in fuzzel (nmcli / bluetoothctl) rather than
+# handing off to nmtui or blueman-manager, so picking a network or a device is
+# the same two-keystroke flow as every other menu here.
+#   nmtui            -> still reachable as `hypr-menu network-tui`
+#   blueman-manager  -> still reachable as `hypr-menu bluetooth-gui`
+menu_network()      { run "$SCRIPTS"/network-menu.sh ; }
+menu_bluetooth()    { run "$SCRIPTS"/bluetooth-menu.sh ; }
+menu_network-tui()  { run "$TERMINAL" -a nmtui -e nmtui ; }
+menu_bluetooth-gui(){ run blueman-manager ; }
+menu_audio()        { run pavucontrol ; }
+menu_powerprofile() { run "$SCRIPTS"/power-profile.sh ; }
+menu_wallpaper()    { run "$SCRIPTS"/wallpaper.sh ; }
+menu_waybartheme()  { run "$SCRIPTS"/waybar-themes.sh ; }
+menu_lockscreen()   { run "$SCRIPTS"/lockscreen.sh ; }
+
+# ─────────────────────────────────────────────────────────── entry
+
+if [ $# -gt 0 ] && declare -F "menu_$1" >/dev/null; then
+	"menu_$1"
+else
+	menu_main
+fi
