@@ -135,7 +135,14 @@ A working, minimal setup — not a full rice:
 - **`bin/hypr-menu`** — nested Omarchy-style menus built on `fuzzel --dmenu`.
   The nesting lives in the script, not the launcher, so it is easy to extend.
 - **`hypr/scripts/`** — wallpaper, lock, network, bluetooth, volume,
-  brightness, keyboard layout, power profile. No sway dependencies.
+  brightness, keyboard layout, power profile, night light. No sway
+  dependencies.
+
+Desktop services come from apt, not source: **`libnotify-bin`** (`notify-send`),
+**`sway-notification-center`** (the daemon those notifications reach — the
+package is *not* called `swaync`), and **`wlsunset`** for night light. The
+scripts still guard every `notify-send` call with `command -v`, so they degrade
+quietly rather than erroring if you skip them.
 
 `install-config.sh` backs up anything it would overwrite.
 

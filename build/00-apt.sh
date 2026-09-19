@@ -20,6 +20,9 @@ PKGS=(
 	libxcb-res0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-xkb-dev
 	libpam0g-dev libxml2-dev libpng-dev uuid-dev
 	xwayland
+	# desktop services: notify-send, the notification daemon the scripts
+	# and waybar's bell module talk to, and night light
+	libnotify-bin sway-notification-center wlsunset
 	# fuzzel
 	libfcft-dev libtllist-dev libpixman-1-dev libfontconfig-dev
 	# waybar
