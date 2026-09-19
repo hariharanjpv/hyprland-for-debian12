@@ -47,11 +47,12 @@ repo follows from it. See **[docs/why-libcxx.md](docs/why-libcxx.md)**.
 | Hyprland | 0.56.2 | `/opt/hypr` |
 | hyprlock | 0.9.6 | `/opt/hypr` |
 | Waybar | 0.15.0 | `/opt/waybar` |
+| fuzzel | 1.12.0 | `/opt/hypr` |
 | aquamarine, hyprutils, hyprlang, hyprcursor, hyprgraphics, hyprwire | see `versions.env` | `/opt/hypr` |
 | wayland 1.26, wayland-protocols 1.49, libdrm 2.4.134, libxkbcommon 1.13.2, libinput 1.30.4, libseat 0.9.3, libei 1.6.0, cairo 1.18.4, libdisplay-info, xcb-util-errors | | `/opt/hypr` |
 | glslang, re2, muparser, tomlplusplus, sdbus-c++, date, Lua 5.5 | | `/opt/hypr` |
 
-**~25 source builds.** Budget 1–2 hours on a modern machine, plus ~6 GB.
+**~26 source builds.** Budget 1–2 hours on a modern machine, plus ~6 GB.
 
 Everything installs into **private prefixes**. Nothing overwrites a system
 library, so your current desktop keeps working and remains your fallback the
@@ -106,10 +107,17 @@ existing graphical session rather than failing confusingly.
 ### Making it a login option
 
 ```bash
-sudo cp /opt/hypr/share/wayland-sessions/hyprland.desktop /usr/share/wayland-sessions/
+./install-session.sh
 ```
 
 Hyprland then appears in your display manager's session picker.
+
+**Do not simply copy `/opt/hypr/share/wayland-sessions/hyprland.desktop`.**
+Its `Exec` is `start-hyprland`, which execs `Hyprland` **by name** — and a
+display manager's session PATH (GDM's is `/usr/local/bin:/usr/bin:/bin`) does
+not include `/opt/hypr/bin`. The session dies instantly and you bounce back to
+the login screen with nothing on screen. `install-session.sh` installs a small
+wrapper that fixes the PATH first.
 
 ---
 
@@ -120,7 +128,10 @@ A working, minimal setup — not a full rice:
 - **`hyprland.conf`** — every option and dispatcher validated against Hyprland
   0.56.2's own source, not against the wiki (which documents a different version)
 - **`hyprlock.conf`**
-- **`fuzzel.ini`** — launcher theme, using only keys that exist in fuzzel 1.8.2
+- **`fuzzel.ini`** — launcher theme for **fuzzel 1.12**, built by
+  `build/08-fuzzel.sh`. Debian's 1.8.2 is not enough: it has **no mouse
+  selection in dmenu mode**, so every `hypr-menu` entry would be
+  keyboard-only.
 - **`bin/hypr-menu`** — nested Omarchy-style menus built on `fuzzel --dmenu`.
   The nesting lives in the script, not the launcher, so it is easy to extend.
 - **`hypr/scripts/`** — wallpaper, lock, network, bluetooth, volume,

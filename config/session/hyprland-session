@@ -1,0 +1,18 @@
+#!/bin/sh
+# GDM/display-manager session wrapper for the source-built Hyprland.
+#
+# WHY THIS EXISTS
+# A display manager does not give the session your login shell's PATH. GDM's
+# is just /usr/local/bin:/usr/bin:/bin, and two things are missing from it:
+#
+#   /opt/hypr/bin   start-hyprland execs "Hyprland" BY NAME. Without this the
+#                   session dies instantly and GDM bounces straight back to
+#                   the login screen — "execvp failed: No such file or
+#                   directory" in the journal, and nothing on screen.
+#   ~/.local/bin    hypr-menu is invoked by name from hyprland.conf ($menu)
+#                   and from waybar module on-click handlers.
+#
+# It is a separate file rather than an inline Exec= because the Desktop Entry
+# spec forbids unquoted ' $ ; in Exec — desktop-file-validate rejects it.
+export PATH="/opt/hypr/bin:$HOME/.local/bin:$PATH"
+exec /opt/hypr/bin/start-hyprland "$@"

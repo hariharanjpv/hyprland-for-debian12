@@ -162,19 +162,69 @@ sed -n '42,140p' src/managers/KeybindManager.cpp | grep -oE '"[a-z0-9]+"' | tr -
 
 ---
 
-## fuzzel: `key/value pair has no value`
+## Session dies instantly, bounces back to the login screen
 
-Debian 12 ships fuzzel **1.8.2** (2023); online docs describe 1.11+. Keys that
-do **not** exist in 1.8.2: `tabs`, and the colors `placeholder`, `input`,
-`counter`. There is also no `prompt` **color**.
+The single most confusing failure here, because **nothing appears on screen**.
+
+`/opt/hypr/share/wayland-sessions/hyprland.desktop` — installed by Hyprland
+itself — has `Exec=/opt/hypr/bin/start-hyprland`. That path is absolute and
+works, but `start-hyprland` then execs **`Hyprland` by name**.
+
+A display manager does not give the session your login shell's PATH. GDM's is
+`/usr/local/bin:/usr/bin:/bin`. `/opt/hypr/bin` is not in it, so the exec fails
+(`execvp failed: No such file or directory` in the journal) and GDM returns to
+the greeter with no visible error.
+
+**Fix:** `./install-session.sh`, which installs a wrapper that sets PATH first:
+
+```sh
+export PATH="/opt/hypr/bin:$HOME/.local/bin:$PATH"
+exec /opt/hypr/bin/start-hyprland "$@"
+```
+
+`~/.local/bin` is there too because `hypr-menu` is invoked by name from
+`hyprland.conf` and from waybar `on-click` handlers.
+
+It has to be a **separate script**, not an inline `Exec=`: the Desktop Entry
+spec forbids unquoted `'`, `$` and `;` in `Exec`, and
+`desktop-file-validate` rejects the inline form.
+
+> This affects every display manager, not just GDM — the PATH is the issue,
+> not GDM specifically.
+
+---
+
+## fuzzel: `key/value pair has no value`, or no mouse selection
+
+Debian 12 ships fuzzel **1.8.2** (2023); online docs describe 1.11+. Two
+separate problems:
+
+**Keys that do not exist in 1.8.2**: `tabs`, `use-bold`, `placeholder`,
+`match-mode`, and the colors `placeholder`, `input`, `counter`. There is also
+no `prompt` **color**. Each is rejected outright at startup.
+
+**No mouse selection in dmenu mode.** This is the one that matters for
+`hypr-menu`: entries render, but cannot be clicked. Keyboard only.
+
+`build/08-fuzzel.sh` builds **1.12.0**, which fixes both. Note it needs
+`wayland-protocols >= 1.32` and bookworm has 1.31, so it must be built against
+the prefix — not with system libraries.
+
+Validate a config against the version you actually have:
 
 ```bash
-man 5 fuzzel.ini | grep -oE '^       [a-z][a-z0-9_-]+' | sort -u
+grep -oE '^\\fB[a-z][a-z0-9_-]*\\fR$' /opt/hypr/share/man/man5/fuzzel.ini.5 \
+  | sed 's/\\fB//;s/\\fR//' | sort -u
 ```
 
 Also: `--password` does **not** work in dmenu mode, so a Wi-Fi passphrase
 prompt has to go elsewhere (`network-menu.sh` hands it to `nmcli --ask` in a
 terminal). `--log-level=error` silences the normal `info:` chatter.
+
+**Watch for lost glyphs.** A Nerd Font glyph in `prompt=` that does not survive
+however you write the file leaves whitespace, and fuzzel reports
+`[main].prompt: key/value pair has no value`. Check with
+`sed -n '/^prompt=/p' fuzzel.ini | od -c`.
 
 ---
 

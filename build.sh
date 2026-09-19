@@ -10,7 +10,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-STEPS=(00-apt 01-toolchain 02-c-core 03-cpp-deps 04-hypr-libs 05-hyprland 06-hyprlock 07-waybar)
+STEPS=(00-apt 01-toolchain 02-c-core 03-cpp-deps 04-hypr-libs 05-hyprland 06-hyprlock 07-waybar 08-fuzzel)
 
 if [ "${1:-}" = "--list" ]; then
 	printf '%s\n' "${STEPS[@]}"; exit 0
@@ -39,9 +39,12 @@ cat <<'DONE'
 Build complete.
 
   1. Install the configs:        ./install-config.sh
-  2. Add the session entry:      sudo cp /opt/hypr/share/wayland-sessions/hyprland.desktop \
-                                         /usr/share/wayland-sessions/
+  2. Register the session:       ./install-session.sh
   3. Log out, pick "Hyprland" at your display manager.
+
+  Do NOT just copy /opt/hypr/share/wayland-sessions/hyprland.desktop --
+  its Exec relies on /opt/hypr/bin being on PATH, which a display
+  manager does not provide. install-session.sh handles this.
 
   Or test first WITHOUT touching your current session:
      Ctrl+Alt+F3 -> log in -> hypr

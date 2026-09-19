@@ -20,6 +20,8 @@ PKGS=(
 	libxcb-res0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-xkb-dev
 	libpam0g-dev libxml2-dev libpng-dev uuid-dev
 	xwayland
+	# fuzzel
+	libfcft-dev libtllist-dev libpixman-1-dev libfontconfig-dev
 	# waybar
 	libfmt-dev libspdlog-dev libgtkmm-3.0-dev libgtk-layer-shell-dev
 	libjsoncpp-dev libsigc++-2.0-dev libnl-3-dev libnl-genl-3-dev

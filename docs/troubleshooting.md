@@ -28,6 +28,23 @@ own logind session: `Ctrl+Alt+F3`, log in, run `hypr`. See
 
 ---
 
+## Picked Hyprland at the login screen, got dumped straight back
+
+The session is exiting immediately. Almost always PATH: the `.desktop` `Exec`
+resolves, but `start-hyprland` execs `Hyprland` **by name** and a display
+manager's PATH does not include `/opt/hypr/bin`.
+
+```bash
+journalctl -b -n 100 | grep -iE 'hyprland|execvp|session'
+cat /usr/share/wayland-sessions/hyprland.desktop     # Exec should be
+                                                     # /usr/local/bin/hyprland-session
+```
+
+Fix with `./install-session.sh`. See
+[gotchas.md](gotchas.md#session-dies-instantly-bounces-back-to-the-login-screen).
+
+---
+
 ## A library resolves to the wrong place
 
 Everything built here should resolve inside its prefix:
@@ -124,6 +141,7 @@ addition if you need it.
 ```bash
 sudo rm -rf /opt/hypr /opt/waybar
 sudo rm -f /usr/share/wayland-sessions/hyprland.desktop
+sudo rm -f /usr/local/bin/hyprland-session
 rm -rf ~/.config/hypr ~/.config/fuzzel ~/.local/bin/hypr ~/.local/bin/hypr-menu
 ```
 
