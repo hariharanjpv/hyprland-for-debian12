@@ -1,0 +1,12 @@
+diff --git a/src/xwayland/XWM.cpp b/src/xwayland/XWM.cpp
+index 5cf5c7e..84f6278 100644
+--- a/src/xwayland/XWM.cpp
++++ b/src/xwayland/XWM.cpp
+@@ -402,6 +402,7 @@ void CXWM::handleClientMessage(xcb_client_message_event_t* e) {
+         }
+ 
+         auto id       = e->data.data32[0];
++        XSURF->m_wlID = id; // remember for onNewSurface(): legacy WL_SURFACE_ID path (Xwayland < 23.1)
+         auto resource = wl_client_get_object(g_pXWayland->m_server->m_xwaylandClient, id);
+         if (resource) {
+             auto surf = CWLSurfaceResource::fromResource(resource);

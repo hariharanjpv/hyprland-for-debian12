@@ -19,6 +19,25 @@ if grep -q '^type ' "$SRC_DIR/Hyprland/meta/generateLuaStubs.py" 2>/dev/null; th
 		|| die "patch failed — see patches/ and docs/gotchas.md"
 fi
 
+# Patch: Debian 12 ships Xwayland 22.1.9, which predates xwayland-shell-v1 /
+# WL_SURFACE_SERIAL (Xwayland 23.1) and still uses the legacy WL_SURFACE_ID
+# client message. Hyprland's WL_SURFACE_ID branch only associates the X surface
+# if the wl_surface resource ALREADY exists -- it never records the id, so the
+# later onNewSurface() match can never succeed.
+#
+# Result: NO X11 WINDOW EVER APPEARS. Not a crash, not an error -- the window
+# simply never maps, and Hyprland logs nothing because debug:disable_logs
+# defaults to true. xwininfo shows it as IsViewable while hyprctl clients is
+# empty.
+#
+# Harmless on systems with Xwayland >= 23.1: it sets a field the modern path
+# does not consult.
+if ! grep -q 'XSURF->m_wlID = id;' "$SRC_DIR/Hyprland/src/xwayland/XWM.cpp"; then
+	step "patching XWM.cpp for Xwayland < 23.1"
+	patch -p1 -d "$SRC_DIR/Hyprland" < "$HERE/patches/hyprland-xwayland-wl-surface-id.patch" \
+		|| die "XWM patch failed — see docs/gotchas.md"
+fi
+
 cmake_build Hyprland
 step "Hyprland installed"
 

@@ -105,6 +105,60 @@ ABI compatibility across `libcairo.so.2`.
 
 ---
 
+## No X11 application ever opens (no error, nothing happens)
+
+**The worst failure here, because it is completely silent.** Launch an X11 app
+under a from-source Hyprland on Debian 12 and nothing appears. No crash, no
+error, no log line — Hyprland's logs say nothing because `debug:disable_logs`
+defaults to `true`. Affects everything on Xwayland: Electron apps that have not
+been told to use Wayland, older GTK/Qt apps, VPN clients, `xeyes`.
+
+The giveaway: the window exists on the X side but the compositor has no idea.
+
+```bash
+xeyes &
+xwininfo -root -children | grep -i eyes     # IsViewable -- X has it
+hyprctl clients | grep -i xeyes             # empty -- Hyprland does not
+```
+
+**Cause.** Debian 12 ships **Xwayland 22.1.9**, which predates
+`xwayland-shell-v1` / `WL_SURFACE_SERIAL` (added in Xwayland 23.1) and still
+uses the legacy `WL_SURFACE_ID` client message.
+
+In `src/xwayland/XWM.cpp`, Hyprland's `WL_SURFACE_ID` branch associates the X
+surface only if the `wl_surface` resource **already exists** at that moment. It
+never records the id, so when the surface shows up a moment later,
+`onNewSurface()` has nothing to match against and the association never
+happens.
+
+This is an upstream assumption (modern Xwayland always sends the serial), not a
+build defect — but on bookworm it means X11 support is entirely broken.
+
+**Fix** — `patches/hyprland-xwayland-wl-surface-id.patch`, applied
+automatically by `build/05-hyprland.sh`:
+
+```c
+auto id       = e->data.data32[0];
++ XSURF->m_wlID = id;   // legacy WL_SURFACE_ID path (Xwayland < 23.1)
+auto resource = wl_client_get_object(...);
+```
+
+One line. Harmless on Xwayland >= 23.1 — it sets a field the modern path does
+not consult.
+
+> **This patch lives in the working tree.** Re-cloning Hyprland or running
+> `git checkout` on that file silently restores the bug, and the symptom is
+> "X11 apps stopped opening" with nothing in any log.
+
+**Alternatives if you would rather not patch:**
+- Run Electron apps natively:
+  `app --ozone-platform=wayland --enable-features=UseOzonePlatform`
+  (verified working; persist it with a desktop-file override in
+  `~/.local/share/applications/`)
+- Build Xwayland >= 23.1 yourself — bookworm has no backport
+
+---
+
 ## `SyntaxError` in `meta/generateLuaStubs.py`
 
 ```
@@ -122,6 +176,21 @@ it — the target is `ALL` and both `Hyprland` and `hyprland_lib` depend on it.
 plain assignments. Safe: PEP 695 aliases are lazily evaluated and plain
 assignments eagerly, which differs only for forward references — and these five
 refer only to builtins or to aliases defined above them.
+
+---
+
+## Two patches live in the working tree
+
+`patches/` holds both, and `build/05-hyprland.sh` applies them — but they are
+**not** committed to the Hyprland checkout. A re-clone or a stray
+`git checkout` on either file restores the original bug:
+
+| Patch | Symptom if lost |
+|---|---|
+| `hyprland-xwayland-wl-surface-id.patch` | X11 apps silently never open |
+| `hyprland-generateLuaStubs-pep695.patch` | build dies with a Python `SyntaxError` |
+
+The build script re-applies both idempotently, so re-running it is the fix.
 
 ---
 
