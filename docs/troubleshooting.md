@@ -45,6 +45,29 @@ Fix with `./install-session.sh`. See
 
 ---
 
+## An X11 app does not open and says nothing
+
+Check whether X has the window but the compositor does not:
+
+```bash
+xeyes &
+hyprctl clients | grep -ci xwayland     # 0 means none are mapped
+```
+
+If zero, the XWM patch is missing — see
+[gotchas.md](gotchas.md#no-x11-application-ever-opens-no-error-nothing-happens).
+Confirm and re-apply:
+
+```bash
+grep -c 'XSURF->m_wlID = id;' ~/hyprland-build/src/Hyprland/src/xwayland/XWM.cpp
+./build.sh 05    # re-applies and rebuilds
+```
+
+**The rebuilt binary only takes effect after you log out and back in** — an
+already-running Hyprland keeps the old code.
+
+---
+
 ## A library resolves to the wrong place
 
 Everything built here should resolve inside its prefix:

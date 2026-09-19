@@ -60,6 +60,14 @@ whole way through.
 
 ---
 
+## One thing you should know up front
+
+Debian 12 ships **Xwayland 22.1.9**, too old for the protocol modern Hyprland
+assumes. Without a patch, **no X11 application ever opens** — silently, with
+nothing in any log. `build/05-hyprland.sh` applies a one-line fix
+automatically; see [docs/gotchas.md](docs/gotchas.md#no-x11-application-ever-opens-no-error-nothing-happens)
+for the mechanism.
+
 ## Requirements
 
 - Debian 12 (bookworm), amd64
